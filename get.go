@@ -10,7 +10,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func (req *GetRequest) get() (*GetResponse, error) {
+func (req *GetRequest) Get() (*GetResponse, error) {
 	resp, isMissing, err := req.readMemo()
 	if err != nil {
 		return resp, fmt.Errorf("Memo-check for %s %s returned: %v", req.Site, req.RequestKey, err)
@@ -42,15 +42,18 @@ func (req *GetRequest) get() (*GetResponse, error) {
 	}
 	responseBody := string(asBytes)
 
-	if strings.Contains(responseBody, "<!DOCTYPE html>") {
+	if strings.Contains(responseBody, "<!doctype html>") || strings.Contains(responseBody, "<!DOCTYPE html>") {
 		d, err := goquery.NewDocumentFromReader(strings.NewReader(responseBody))
 		if err != nil {
 			return resp, fmt.Errorf("Document parse of %s failed: %v", req.URL, err)
 		}
 
-		d.Find("script").ReplaceWithHtml("<!-- Removed Script -->")
-		d.Find("style").ReplaceWithHtml("<!-- Removed Style -->")
-		d.Find("link").ReplaceWithHtml("<!-- Removed Link -->")
+		d.Find("script").ReplaceWithHtml("<!-- Removed script -->")
+		d.Find("style").ReplaceWithHtml("<!-- Removed style -->")
+		d.Find("link").ReplaceWithHtml("<!-- Removed link -->")
+		d.Find("img").ReplaceWithHtml("<!-- Removed img -->")
+		d.Find("svg").ReplaceWithHtml("<!-- Removed svg -->")
+		d.Find("image:image").ReplaceWithHtml("<!-- Removed image:image -->")
 		responseBody, err = d.Html()
 		if err != nil {
 			return resp, fmt.Errorf("Converting to html failed for document at %s: %v", req.URL, err)

@@ -12,7 +12,7 @@ type respOrErr struct {
 	err  error
 }
 
-func (a *Amasser) get(reqs []*GetRequest) ([]*GetResponse, error) {
+func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 	siteToMax := make(map[string]int)
 	for _, req := range reqs {
 		siteToMax[req.Site] = req.SiteMaxConcurrentRequests
@@ -46,7 +46,7 @@ func (a *Amasser) get(reqs []*GetRequest) ([]*GetResponse, error) {
 		r := &respOrErr{
 			site: req.Site,
 		}
-		r.resp, r.err = req.get()
+		r.resp, r.err = req.Get()
 		respOrErrChan <- r
 	}
 	killLock := sync.RWMutex{}

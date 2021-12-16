@@ -32,6 +32,8 @@ type Amasser struct {
 	AllowedErrorProportion     float64
 }
 
+// To call just once, use *GetRequest.Get() => *GetResponse, error
+
 func (a *Amasser) GetAll(reqs []*GetRequest) ([]*GetResponse, error) {
-	return a.get(reqs)
+	return a.getAll(reqs)
 }

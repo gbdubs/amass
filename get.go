@@ -10,7 +10,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func (req *GetRequest) Get() (*GetResponse, error) {
+func (req *GetRequest) get() (*GetResponse, error) {
 	resp, isMissing, err := req.readMemo()
 	if err != nil {
 		return resp, fmt.Errorf("Memo-check for %s %s returned: %v", req.Site, req.RequestKey, err)

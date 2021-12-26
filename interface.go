@@ -26,14 +26,24 @@ type GetResponse struct {
 	RoundTripData []byte
 }
 
+func (r *GetRequest) Get() (*GetResponse, error) {
+	return r.get()
+}
+
 type Amasser struct {
 	TotalMaxConcurrentRequests int
 	Verbose                    bool
 	AllowedErrorProportion     float64
 }
 
-// To call just once, use *GetRequest.Get() => *GetResponse, error
-
 func (a *Amasser) GetAll(reqs []*GetRequest) ([]*GetResponse, error) {
 	return a.getAll(reqs)
+}
+
+func AmasserForTests() *Amasser {
+	return &Amasser{
+		TotalMaxConcurrentRequests: 1,
+		Verbose:                    false,
+		AllowedErrorProportion:     .01,
+	}
 }

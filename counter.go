@@ -22,30 +22,22 @@ func newRequestCounter() *requestCounter {
 	}
 }
 
-func (c *requestCounter) canSend(site string) bool {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
+func (c *requestCounter) incIfCanSend(site string) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	// If c.allMax == 0, the counter has been killed and no more real work will be done.
-	if c.allMax == 0 {
+	if c.allMax == 0 || (c.siteToExecuting[site] < c.siteToMax[site] && c.allExecuting < c.allMax) {
+		c.siteToExecuting[site]++
+		c.allExecuting++
 		return true
 	}
-	if c.siteToExecuting[site] >= c.siteToMax[site] {
-		return false
-	}
-	return c.allExecuting < c.allMax
+	return false
 }
 
-func (c *requestCounter) get(site string) (int, int) {
+func (c *requestCounter) get(site string) (int, int, int, int) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return c.siteToExecuting[site], c.siteToMax[site]
-}
-
-func (c *requestCounter) inc(site string) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.siteToExecuting[site]++
-	c.allExecuting++
+	return c.siteToExecuting[site], c.siteToMax[site], c.allExecuting, c.allMax
 }
 
 func (c *requestCounter) dec(site string) {

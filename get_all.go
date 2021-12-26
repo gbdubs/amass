@@ -32,23 +32,11 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 	}
 	maybeLogSite := func(event string, site string) {
 		if a.Verbose {
-			e, m := counter.get(site)
-			fmt.Printf("  %s - %s@[%d / %d]\n", event, site, e, m)
+			e, m, te, tm := counter.get(site)
+			fmt.Printf("  %s - %s@[%d / %d] tot@[%d / %d]\n", event, site, e, m, te, tm)
 		}
 	}
-	send := func(req *GetRequest) {
-		if counter.wasKilled() {
-			respOrErrChan <- &respOrErr{}
-			return
-		}
-		counter.inc(req.Site)
-		maybeLogSite("send", req.Site)
-		r := &respOrErr{
-			site: req.Site,
-		}
-		r.resp, r.err = req.Get()
-		respOrErrChan <- r
-	}
+
 	killLock := sync.RWMutex{}
 	considerKillIfErrPropHigh := func() {
 		killLock.Lock()
@@ -65,6 +53,7 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 		maybeLog(fmt.Sprintf("KILLING - err prop %f (%d/%d)", ep, ne, ne+nr))
 		counter.kill()
 	}
+
 	receive := func() {
 		maybeLog("receive-get")
 		v := <-respOrErrChan
@@ -80,42 +69,43 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 		}
 		considerKillIfErrPropHigh()
 	}
-	// Always receive exactly len(reqs) times.
-	receivesToDo := len(reqs)
-	receivesToDoLock := sync.RWMutex{}
-	maybeReceive := func() bool {
-		shouldReceive := false
-		receivesToDoLock.Lock()
-		if receivesToDo > 0 {
-			shouldReceive = true
-			receivesToDo -= 1
+
+	send := func(req *GetRequest) {
+		if counter.wasKilled() {
+			maybeLog("send killed")
+			respOrErrChan <- &respOrErr{}
+			return
 		}
-		receivesToDoLock.Unlock()
-		if shouldReceive {
-			receive()
-			return true
-		} else {
-			maybeLog("maybe receive - no")
-			return false
+		maybeLogSite("send", req.Site)
+		r := &respOrErr{
+			site: req.Site,
 		}
+		r.resp, r.err = req.Get()
+		respOrErrChan <- r
 	}
-	// Always send exactly n times, even if killed.
-	sendRequests := func() {
-		for _, req := range reqs {
-			r := req
-			for true {
-				if counter.canSend(r.Site) {
-					break
-				}
-				maybeReceive()
+
+	sentReqs := make([]bool, len(reqs))
+	sentReqsLock := sync.RWMutex{}
+	tryToSendAllUnsentRequests := func() {
+		sentReqsLock.Lock()
+		for i, req := range reqs {
+			if sentReqs[i] {
+				continue
 			}
-			go send(r)
+			r := req
+			if counter.incIfCanSend(r.Site) {
+				sentReqs[i] = true
+				go send(r)
+			}
 		}
+		sentReqsLock.Unlock()
 	}
 
-	go sendRequests()
+	tryToSendAllUnsentRequests()
 
-	for maybeReceive() {
+	for i := 0; i < len(reqs); i++ {
+		receive()
+		tryToSendAllUnsentRequests()
 	}
 
 	if counter.wasKilled() {

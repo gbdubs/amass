@@ -25,16 +25,9 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 	resps := make([]*GetResponse, 0)
 	errs := make([]error, 0)
 
-	maybeLog := func(s string) {
-		if a.Verbose {
-			fmt.Printf("  %s\n", s)
-		}
-	}
-	maybeLogSite := func(event string, site string) {
-		if a.Verbose {
-			e, m, te, tm := counter.get(site)
-			fmt.Printf("  %s - %s@[%d / %d] tot@[%d / %d]\n", event, site, e, m, te, tm)
-		}
+	siteCounts := func(site string) string {
+		e, m, te, tm := counter.get(site)
+		return fmt.Sprintf("%s@[%d / %d] tot@[%d / %d]", site, e, m, te, tm)
 	}
 
 	killLock := sync.RWMutex{}
@@ -50,33 +43,35 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 		if ne+nr < 5 || ep < a.AllowedErrorProportion {
 			return
 		}
-		maybeLog(fmt.Sprintf("KILLING - err prop %f (%d/%d)", ep, ne, ne+nr))
+		a.VLog(fmt.Sprintf("KILLING - err prop %f (%d/%d)\n", ep, ne, ne+nr))
 		counter.kill()
 	}
 
 	receive := func() {
-		maybeLog("receive-get")
 		v := <-respOrErrChan
 		counter.dec(v.site)
+		toLog := fmt.Sprintf("[%d/%d] [%d resps %d errs] receive-get: ", len(resps)+len(errs), len(reqs), len(resps), len(errs))
+
 		if *v == (respOrErr{}) {
-			maybeLog("  received: empty")
+			toLog += " empty. "
 		} else if v.err != nil {
-			maybeLogSite("  received: err", v.site)
+			toLog += " ERROR. " + siteCounts(v.site)
 			errs = append(errs, v.err)
 		} else {
-			maybeLogSite("  received: success", v.site)
+			toLog += " success. " + siteCounts(v.site)
 			resps = append(resps, v.resp)
 		}
+		a.VLog(toLog + "\n")
 		considerKillIfErrPropHigh()
 	}
 
 	send := func(req *GetRequest) {
 		if counter.wasKilled() {
-			maybeLog("send killed")
+			a.VLog("send killed\n")
 			respOrErrChan <- &respOrErr{}
 			return
 		}
-		maybeLogSite("send", req.Site)
+		a.VLog("send " + siteCounts(req.Site) + "\n")
 		r := &respOrErr{
 			site: req.Site,
 		}
@@ -109,10 +104,10 @@ func (a *Amasser) getAll(reqs []*GetRequest) ([]*GetResponse, error) {
 	}
 
 	if counter.wasKilled() {
-		maybeLog("was killed - synthesizing errors")
+		a.VLog("was killed - synthesizing errors\n")
 		return resps, synthesizeErrors(errs)
 	}
-	maybeLog("done")
+	a.VLog("done\n")
 	return resps, nil
 }
 

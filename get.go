@@ -47,12 +47,12 @@ func (req *GetRequest) get() (*GetResponse, error) {
 		if err != nil {
 			return resp, fmt.Errorf("Document parse of %s failed: %v", req.URL, err)
 		}
-
 		d.Find("script").ReplaceWithHtml("<!-- Removed script -->")
 		d.Find("style").ReplaceWithHtml("<!-- Removed style -->")
 		d.Find("link").ReplaceWithHtml("<!-- Removed link -->")
 		d.Find("img").ReplaceWithHtml("<!-- Removed img -->")
 		d.Find("svg").ReplaceWithHtml("<!-- Removed svg -->")
+		d.Find("form").ReplaceWithHtml("<!-- Removed form -->")
 		d.Find("image:image").ReplaceWithHtml("<!-- Removed image:image -->")
 		responseBody, err = d.Html()
 		if err != nil {

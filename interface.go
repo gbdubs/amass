@@ -2,6 +2,7 @@ package amass
 
 import (
 	"github.com/gbdubs/attributions"
+	"github.com/gbdubs/verbose"
 )
 
 type GetRequest struct {
@@ -32,8 +33,8 @@ func (r *GetRequest) Get() (*GetResponse, error) {
 
 type Amasser struct {
 	TotalMaxConcurrentRequests int
-	Verbose                    bool
 	AllowedErrorProportion     float64
+	verbose.Verbose
 }
 
 func (a *Amasser) GetAll(reqs []*GetRequest) ([]*GetResponse, error) {
@@ -43,7 +44,7 @@ func (a *Amasser) GetAll(reqs []*GetRequest) ([]*GetResponse, error) {
 func AmasserForTests() *Amasser {
 	return &Amasser{
 		TotalMaxConcurrentRequests: 1,
-		Verbose:                    false,
+		Verbose:                    verbose.Empty(),
 		AllowedErrorProportion:     .01,
 	}
 }
